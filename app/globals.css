@@ -16,7 +16,7 @@
   --border-strong: rgba(9, 9, 11, 0.14);
   --text: #18181b;
   --text-muted: #52525b;
-  --text-subtle: #9698a1;
+  --text-subtle: #6c6e77; /* ≥4.5:1 on surface — passes for placeholders/meta */
 
   /* one accent */
   --accent: #6366f1;
@@ -48,7 +48,7 @@
     --border-strong: rgba(255, 255, 255, 0.14);
     --text: #ededf0;
     --text-muted: #a1a1aa;
-    --text-subtle: #6b6b76;
+    --text-subtle: #8b8b95; /* ≥4.5:1 on dark surface */
 
     --accent: #7d80f5;
     --accent-hover: #8f92f7;
