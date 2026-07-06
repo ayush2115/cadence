@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeFreeIntervals, sortTasks } from "@/lib/scheduler";
-import type { SchedulerTask } from "@/lib/types";
+import {
+  computeFreeIntervals,
+  sortTasks,
+  schedule,
+  OVERFLOW_REASONS,
+} from "@/lib/scheduler";
+import type { SchedulerTask, SchedulerInput } from "@/lib/types";
 
 describe("computeFreeIntervals", () => {
   it("returns the whole work window when nothing is blocked", () => {
@@ -110,5 +115,105 @@ describe("sortTasks (EDF with tie-breaks)", () => {
     const out = sortTasks(input);
     expect(out.map((t) => t.id)).toEqual(["a", "z"]);
     expect(input.map((t) => t.id)).toEqual(["z", "a"]);
+  });
+});
+
+const baseInput = (over: Partial<SchedulerInput> = {}): SchedulerInput => ({
+  dayStartMin: 540, // 09:00
+  dayEndMin: 1080, // 18:00
+  blocked: [],
+  focus: [],
+  tasks: [],
+  ...over,
+});
+
+describe("schedule — core first-fit", () => {
+  it("places a single task at the start of the day", () => {
+    const r = schedule(baseInput({ tasks: [task({ id: "a", estimatedMinutes: 90 })] }));
+    expect(r.planned).toEqual([
+      { taskId: "a", startMin: 540, endMin: 630, inFocus: false },
+    ]);
+    expect(r.overflow).toEqual([]);
+  });
+
+  it("places tasks back-to-back in EDF order regardless of input order", () => {
+    const r = schedule(
+      baseInput({
+        tasks: [
+          task({ id: "later", estimatedMinutes: 60, deadlineOffsetMin: 1080 }),
+          task({ id: "urgent", estimatedMinutes: 60, deadlineOffsetMin: 720 }),
+        ],
+      })
+    );
+    expect(r.planned).toEqual([
+      { taskId: "urgent", startMin: 540, endMin: 600, inFocus: false },
+      { taskId: "later", startMin: 600, endMin: 660, inFocus: false },
+    ]);
+  });
+
+  it("skips a gap that is too small (first-fit into the next interval)", () => {
+    // free: 540-600 (60m), then 660-900
+    const r = schedule(
+      baseInput({
+        dayEndMin: 900,
+        blocked: [{ startMin: 600, endMin: 660 }],
+        tasks: [task({ id: "big", estimatedMinutes: 90 })],
+      })
+    );
+    expect(r.planned).toEqual([
+      { taskId: "big", startMin: 660, endMin: 750, inFocus: false },
+    ]);
+  });
+
+  it("reports honest overflow when a task fits nowhere", () => {
+    const r = schedule(
+      baseInput({
+        dayEndMin: 660, // 2h day
+        tasks: [
+          task({ id: "fits", estimatedMinutes: 60, priority: "high" }),
+          task({ id: "toobig", estimatedMinutes: 90 }),
+        ],
+      })
+    );
+    expect(r.planned.map((p) => p.taskId)).toEqual(["fits"]);
+    expect(r.overflow).toEqual([
+      { taskId: "toobig", reason: OVERFLOW_REASONS.noSlot },
+    ]);
+  });
+
+  it("computes reality-check stats", () => {
+    const r = schedule(
+      baseInput({
+        dayEndMin: 780, // 4h day
+        blocked: [{ startMin: 600, endMin: 660 }], // 1h blocked -> 3h free
+        tasks: [
+          task({ id: "a", estimatedMinutes: 60 }),
+          task({ id: "b", estimatedMinutes: 240 }), // overflows
+        ],
+      })
+    );
+    expect(r.stats).toEqual({ freeMinutes: 180, plannedMinutes: 60, taskMinutes: 300 });
+  });
+
+  it("returns planned items sorted by start time", () => {
+    const r = schedule(
+      baseInput({
+        tasks: [
+          task({ id: "b", estimatedMinutes: 30 }),
+          task({ id: "a", estimatedMinutes: 30, deadlineOffsetMin: 600 }),
+        ],
+      })
+    );
+    const starts = r.planned.map((p) => p.startMin);
+    expect(starts).toEqual([...starts].sort((x, y) => x - y));
+  });
+
+  it("handles the empty-tasks case", () => {
+    const r = schedule(baseInput());
+    expect(r).toEqual({
+      planned: [],
+      overflow: [],
+      stats: { freeMinutes: 540, plannedMinutes: 0, taskMinutes: 0 },
+    });
   });
 });
