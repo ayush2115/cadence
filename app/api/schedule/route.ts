@@ -4,6 +4,19 @@ import { hhmmToMinutes, minutesToHhmm, isoToOffsetMin } from "@/lib/time";
 
 const HHMM = z.string().regex(/^(?:[01]?\d|2[0-3]):[0-5]\d$/, "expected HH:MM");
 
+/**
+ * True only for a real calendar date. `new Date(Date.UTC(y, m-1, d))` rolls
+ * over out-of-range parts (month 13, Feb 30), so we reject anything that does
+ * not round-trip back to the same y/m/d.
+ */
+const isRealCalendarDate = (s: string): boolean => {
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y && dt.getUTCMonth() + 1 === m && dt.getUTCDate() === d
+  );
+};
+
 const WindowSchema = z.object({
   start: HHMM,
   end: HHMM,
@@ -21,7 +34,10 @@ const TaskSchema = z.object({
 });
 
 const BodySchema = z.object({
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  day: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .refine(isRealCalendarDate, "expected a real calendar date"),
   tasks: z.array(TaskSchema).min(1).max(100),
   preferences: z
     .object({

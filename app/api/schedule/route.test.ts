@@ -62,4 +62,33 @@ describe("POST /api/schedule", () => {
     );
     expect(res.status).toBe(400);
   });
+
+  // preferences {} is fully valid (all fields default), so `day` is the only
+  // variable — these tests isolate calendar-date validation.
+  it("rejects an out-of-range calendar date (month 13, day 45) with 400", async () => {
+    const res = await post({
+      day: "2026-13-45",
+      tasks: [{ id: "t", title: "x", estimatedMinutes: 30 }],
+      preferences: {},
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a nonexistent calendar date (Feb 30) with 400", async () => {
+    const res = await post({
+      day: "2026-02-30",
+      tasks: [{ id: "t", title: "x", estimatedMinutes: 30 }],
+      preferences: {},
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts a real calendar date with 200", async () => {
+    const res = await post({
+      day: "2026-07-06",
+      tasks: [{ id: "t", title: "x", estimatedMinutes: 30 }],
+      preferences: {},
+    });
+    expect(res.status).toBe(200);
+  });
 });
