@@ -70,16 +70,14 @@ export function Timeline({
         return (
           <div
             key={`focus-${i}`}
-            className="absolute right-0 rounded-lg border border-dashed"
+            className="absolute inset-x-0 rounded-lg"
             style={{
               top: top(s),
               height: (e - s) * PX_PER_MIN,
-              left: GUTTER - 8,
               background: "var(--focus-wash)",
-              borderColor: "var(--focus-line)",
             }}
           >
-            <span className="absolute right-2 top-1 text-[10px] font-medium uppercase tracking-wide text-accent/70">
+            <span className="absolute right-2.5 top-1.5 text-[9.5px] font-medium uppercase tracking-wider text-accent/55">
               {f.label ?? "focus"}
             </span>
           </div>
