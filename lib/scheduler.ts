@@ -149,6 +149,36 @@ function isWithinFocus(startMin: number, endMin: number, focus: Interval[]): boo
   return focus.some((f) => startMin >= f.startMin && endMin <= f.endMin);
 }
 
+/**
+ * Kahn's algorithm with an EDF-ordered ready set: among tasks whose
+ * prerequisites are satisfied, always pick the EDF-best next. Tasks left
+ * unprocessed are part of a cycle.
+ */
+function topoOrder(tasks: SchedulerTask[]): { order: SchedulerTask[]; cyclic: SchedulerTask[] } {
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const indegree = new Map<string, number>();
+  const dependents = new Map<string, string[]>();
+  for (const t of tasks) {
+    const deps = (t.dependsOn ?? []).filter((d) => byId.has(d) && d !== t.id);
+    indegree.set(t.id, deps.length);
+    for (const d of deps) dependents.set(d, [...(dependents.get(d) ?? []), t.id]);
+  }
+  const ready = tasks.filter((t) => indegree.get(t.id) === 0);
+  const order: SchedulerTask[] = [];
+  while (ready.length > 0) {
+    ready.sort(compareTasks);
+    const next = ready.shift()!;
+    order.push(next);
+    for (const depId of dependents.get(next.id) ?? []) {
+      const left = indegree.get(depId)! - 1;
+      indegree.set(depId, left);
+      if (left === 0) ready.push(byId.get(depId)!);
+    }
+  }
+  const placedIds = new Set(order.map((t) => t.id));
+  return { order, cyclic: tasks.filter((t) => !placedIds.has(t.id)) };
+}
+
 export function schedule(input: SchedulerInput): SchedulerResult {
   const bufferMin = input.bufferMin ?? 0;
   const free = computeFreeIntervals(input.dayStartMin, input.dayEndMin, input.blocked);
@@ -159,17 +189,36 @@ export function schedule(input: SchedulerInput): SchedulerResult {
   const planned: PlanItem[] = [];
   const overflow: OverflowItem[] = [];
 
-  for (const t of sortTasks(input.tasks)) {
+  const { order, cyclic } = topoOrder(input.tasks);
+  const endOf = new Map<string, number>();      // taskId -> placed end
+  const failed = new Set<string>();             // overflowed task ids
+  const inBatch = new Set(input.tasks.map((t) => t.id));
+  for (const t of cyclic) {
+    overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.depCycle });
+    failed.add(t.id); // cascade cyclic failure to any dependents
+  }
+
+  for (const t of order) {
+    const deps = (t.dependsOn ?? []).filter((d) => inBatch.has(d) && d !== t.id);
+    if (deps.some((d) => failed.has(d))) {
+      overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.depUnscheduled });
+      failed.add(t.id);
+      continue;
+    }
+    const earliest = Math.max(0, ...deps.map((d) => endOf.get(d) ?? 0));
+
     let placed: { startMin: number } | null = null;
     if (isFocusPreferred(t, input.focus)) {
-      placed = placeInFocus(slots, input.focus, t.estimatedMinutes, 0, bufferMin);
+      placed = placeInFocus(slots, input.focus, t.estimatedMinutes, earliest, bufferMin);
     }
-    placed ??= placeFirstFit(slots, t.estimatedMinutes, 0, bufferMin);
+    placed ??= placeFirstFit(slots, t.estimatedMinutes, earliest, bufferMin);
     if (!placed) {
       overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.noSlot });
+      failed.add(t.id);
       continue;
     }
     const endMin = placed.startMin + t.estimatedMinutes;
+    endOf.set(t.id, endMin);
     planned.push({
       taskId: t.id,
       startMin: placed.startMin,

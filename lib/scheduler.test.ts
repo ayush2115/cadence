@@ -303,3 +303,63 @@ describe("schedule — focus windows", () => {
     expect(r.planned[0].inFocus).toBe(true);
   });
 });
+
+describe("schedule — dependencies", () => {
+  it("schedules a prerequisite before its dependent in time", () => {
+    const r = schedule(
+      baseInput({
+        tasks: [
+          // dependent has the EARLIER deadline — without deps it would go first
+          task({ id: "write-tests", estimatedMinutes: 60, deadlineOffsetMin: 700, dependsOn: ["write-code"] }),
+          task({ id: "write-code", estimatedMinutes: 120, deadlineOffsetMin: 1000 }),
+        ],
+      })
+    );
+    const code = r.planned.find((p) => p.taskId === "write-code")!;
+    const tests = r.planned.find((p) => p.taskId === "write-tests")!;
+    expect(tests.startMin).toBeGreaterThanOrEqual(code.endMin);
+  });
+
+  it("cascades overflow: dependent of an unschedulable task overflows too", () => {
+    const r = schedule(
+      baseInput({
+        dayEndMin: 660, // 2h day
+        tasks: [
+          task({ id: "huge", estimatedMinutes: 400 }),
+          task({ id: "child", estimatedMinutes: 30, dependsOn: ["huge"] }),
+        ],
+      })
+    );
+    expect(r.overflow).toEqual([
+      { taskId: "huge", reason: OVERFLOW_REASONS.noSlot },
+      { taskId: "child", reason: OVERFLOW_REASONS.depUnscheduled },
+    ]);
+  });
+
+  it("sends dependency cycles to overflow, schedules the rest", () => {
+    const r = schedule(
+      baseInput({
+        tasks: [
+          task({ id: "x", dependsOn: ["y"] }),
+          task({ id: "y", dependsOn: ["x"] }),
+          task({ id: "free-agent" }),
+        ],
+      })
+    );
+    expect(r.planned.map((p) => p.taskId)).toEqual(["free-agent"]);
+    expect(r.overflow).toEqual(
+      expect.arrayContaining([
+        { taskId: "x", reason: OVERFLOW_REASONS.depCycle },
+        { taskId: "y", reason: OVERFLOW_REASONS.depCycle },
+      ])
+    );
+  });
+
+  it("ignores dependsOn ids that are not in the batch (already done elsewhere)", () => {
+    const r = schedule(
+      baseInput({ tasks: [task({ id: "solo", dependsOn: ["not-here"] })] })
+    );
+    expect(r.planned.map((p) => p.taskId)).toEqual(["solo"]);
+    expect(r.overflow).toEqual([]);
+  });
+});
