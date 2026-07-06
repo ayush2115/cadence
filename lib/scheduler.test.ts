@@ -446,6 +446,34 @@ describe("schedule — value-max selection when overcommitted", () => {
   });
 });
 
+describe("schedule — re-planning with locked items", () => {
+  it("keeps locked items fixed and packs new tasks around them", () => {
+    const r = schedule(
+      baseInput({
+        dayEndMin: 780,
+        locked: [{ taskId: "done-standup", startMin: 600, endMin: 660 }],
+        tasks: [task({ id: "next", estimatedMinutes: 120 })],
+      })
+    );
+    expect(r.planned).toEqual([
+      { taskId: "done-standup", startMin: 600, endMin: 660, inFocus: false, locked: true },
+      { taskId: "next", startMin: 660, endMin: 780, inFocus: false },
+    ]);
+    expect(r.stats.freeMinutes).toBe(180); // 240 - 60 locked
+  });
+
+  it("starts a task after the locked prerequisite it depends on", () => {
+    const r = schedule(
+      baseInput({
+        locked: [{ taskId: "morning-review", startMin: 600, endMin: 660 }],
+        tasks: [task({ id: "followup", estimatedMinutes: 30, dependsOn: ["morning-review"] })],
+      })
+    );
+    const f = r.planned.find((p) => p.taskId === "followup")!;
+    expect(f.startMin).toBeGreaterThanOrEqual(660);
+  });
+});
+
 describe("selectByValue (knapsack DP)", () => {
   it("finds the optimal subset, not the greedy one", () => {
     // capacity 300: greedy-by-value takes A(200min,v=800h?) — construct a case

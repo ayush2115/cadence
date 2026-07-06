@@ -181,7 +181,11 @@ function topoOrder(tasks: SchedulerTask[]): { order: SchedulerTask[]; cyclic: Sc
 
 export function schedule(input: SchedulerInput): SchedulerResult {
   const bufferMin = input.bufferMin ?? 0;
-  const free = computeFreeIntervals(input.dayStartMin, input.dayEndMin, input.blocked);
+  const lockedItems = input.locked ?? [];
+  const free = computeFreeIntervals(input.dayStartMin, input.dayEndMin, [
+    ...input.blocked,
+    ...lockedItems.map((l) => ({ startMin: l.startMin, endMin: l.endMin })),
+  ]);
   const freeMinutes = free.reduce((s, i) => s + (i.endMin - i.startMin), 0);
   const taskMinutes = input.tasks.reduce((s, t) => s + t.estimatedMinutes, 0);
 
@@ -220,13 +224,26 @@ export function schedule(input: SchedulerInput): SchedulerResult {
   const endOf = new Map<string, number>();      // taskId -> placed end
   const failed = new Set<string>();             // overflowed task ids
   const inBatch = new Set(candidates.map((t) => t.id));
+
+  // Locked items are already placed: seed their end times (so dependents can
+  // start after them) and emit them into the plan as fixed, flagged entries.
+  for (const l of lockedItems) {
+    endOf.set(l.taskId, l.endMin);
+    planned.push({
+      taskId: l.taskId,
+      startMin: l.startMin,
+      endMin: l.endMin,
+      inFocus: isWithinFocus(l.startMin, l.endMin, input.focus),
+      locked: true,
+    });
+  }
   for (const t of cyclic) {
     overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.depCycle });
     failed.add(t.id); // cascade cyclic failure to any dependents
   }
 
   for (const t of order) {
-    const deps = (t.dependsOn ?? []).filter((d) => inBatch.has(d) && d !== t.id);
+    const deps = (t.dependsOn ?? []).filter((d) => (inBatch.has(d) || endOf.has(d)) && d !== t.id);
     if (deps.some((d) => failed.has(d))) {
       overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.depUnscheduled });
       failed.add(t.id);
