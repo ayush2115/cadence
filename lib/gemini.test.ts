@@ -45,6 +45,12 @@ describe("parseWithGemini", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  it("passes an AbortSignal to fetch so a hung call can time out", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse(VALID));
+    await parseWithGemini("x", "2026-07-06", { apiKey: "k", fetchImpl });
+    expect(fetchImpl.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("returns null on schema-invalid payload (after retry)", async () => {
     const fetchImpl = vi
       .fn()
