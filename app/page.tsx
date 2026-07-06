@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NotePencil, CalendarDots, Scales } from "@phosphor-icons/react/dist/ssr";
+import { NotePencil, CalendarDots, Scales, GithubLogo } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui";
 import { SmoothScroll } from "@/components/landing/SmoothScroll";
@@ -24,8 +24,6 @@ const STEPS = [
   },
 ];
 
-const TECH = ["Earliest-deadline-first", "Weighted-interval DP", "Topological sort", "0/1 knapsack", "69 passing tests"];
-
 export default function Landing() {
   return (
     <div className="flex min-h-full flex-col">
@@ -35,6 +33,15 @@ export default function Landing() {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 lg:px-8">
           <Logo />
           <nav className="flex items-center gap-1.5">
+            <a
+              href="https://github.com/ayush2115/cadence"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors duration-150 hover:text-text sm:inline-flex"
+            >
+              <GithubLogo size={16} weight="fill" />
+              GitHub
+            </a>
             <Link
               href="/login"
               className="rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors duration-150 hover:text-text"
@@ -109,35 +116,22 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* under the hood — the differentiator */}
+        {/* closing CTA */}
         <section className="border-t border-border bg-surface/40 py-20 sm:py-28">
-          <div className="mx-auto w-full max-w-3xl px-5 text-center lg:px-8">
+          <div className="mx-auto w-full max-w-2xl px-5 text-center lg:px-8">
             <Reveal>
               <h2 className="text-balance text-3xl font-semibold tracking-tight text-text">
-                The engine is the point, not the prompt.
+                Stop deciding what to do next.
               </h2>
             </Reveal>
             <Reveal delay={0.08}>
-              <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-muted">
-                The LLM only reads your text. A tested constraint solver builds the
-                plan: earliest-deadline-first placement, a knapsack for overcommitted
-                days, topological sort for dependencies.
+              <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-muted">
+                Dump your tasks and let Cadence build a realistic day around your
+                time, priorities, and focus.
               </p>
             </Reveal>
             <Reveal delay={0.14}>
-              <ul className="mt-7 flex flex-wrap justify-center gap-2">
-                {TECH.map((t) => (
-                  <li
-                    key={t}
-                    className="rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-[12px] text-muted"
-                  >
-                    {t}
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-            <Reveal delay={0.2}>
-              <div className="mt-9">
+              <div className="mt-8">
                 <Link href="/plan">
                   <Button>Plan your day</Button>
                 </Link>
@@ -151,10 +145,11 @@ export default function Landing() {
         <span>Cadence, an AI day planner.</span>
         <a
           href="https://github.com/ayush2115/cadence"
-          className="transition-colors duration-150 hover:text-text"
+          className="flex items-center gap-1.5 transition-colors duration-150 hover:text-text"
           target="_blank"
           rel="noreferrer"
         >
+          <GithubLogo size={15} weight="fill" />
           Source on GitHub
         </a>
       </footer>
