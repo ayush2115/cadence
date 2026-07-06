@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function GoogleIcon() {
   return (
@@ -49,8 +50,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="mx-auto flex h-16 w-full max-w-5xl items-center px-5">
+      <header className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-5">
         <Logo />
+        <ThemeToggle />
       </header>
 
       <main className="flex flex-1 items-center justify-center px-5 py-10">

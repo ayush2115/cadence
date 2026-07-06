@@ -2,6 +2,7 @@ import Link from "next/link";
 import { NotePencil, CalendarDots, Scales, GithubLogo } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SmoothScroll } from "@/components/landing/SmoothScroll";
 import { Reveal } from "@/components/landing/Reveal";
 import { HeroPreview } from "@/components/landing/HeroPreview";
@@ -33,6 +34,7 @@ export default function Landing() {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 lg:px-8">
           <Logo />
           <nav className="flex items-center gap-1.5">
+            <ThemeToggle />
             <a
               href="https://github.com/ayush2115/cadence"
               target="_blank"
