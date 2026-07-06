@@ -110,7 +110,7 @@ heuristic — not a hack. Complexity: sorting dominates, **O(n log n)**.
 
 | Upgrade | Algorithm |
 |---|---|
-| Value-max when overcommitted | **Weighted interval scheduling** (DP, O(n log n)) — keep the highest-value set that fits |
+| Value-max when overcommitted | **0/1 knapsack DP over free minutes** (exact; capacity ≤ 1440 keeps it O(n·W) cheap) — keep the highest-value set that fits |
 | Task dependencies | **Topological sort** before EDF; never place a task before its prerequisites |
 | Overlapping fixed blocks | **Interval partitioning** for free-interval computation |
 | Re-plan on slip | keep `locked`/done items fixed, re-pack the rest |

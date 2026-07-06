@@ -3,6 +3,7 @@ import {
   computeFreeIntervals,
   sortTasks,
   schedule,
+  selectByValue,
   OVERFLOW_REASONS,
 } from "@/lib/scheduler";
 import type { SchedulerTask, SchedulerInput } from "@/lib/types";
@@ -165,10 +166,17 @@ describe("schedule — core first-fit", () => {
     ]);
   });
 
-  it("reports honest overflow when a task fits nowhere", () => {
+  it("places what fits and reports noSlot for a task that fits no single contiguous gap", () => {
+    // free: three 60-min gaps (540-600, 660-720, 780-840) = 180 free total.
+    // taskMinutes 150 <= 180 => NOT overcommitted (selection stays off),
+    // but the 90m task fits no single 60-min gap => noSlot (fragmentation).
     const r = schedule(
       baseInput({
-        dayEndMin: 660, // 2h day
+        dayEndMin: 840,
+        blocked: [
+          { startMin: 600, endMin: 660 },
+          { startMin: 720, endMin: 780 },
+        ],
         tasks: [
           task({ id: "fits", estimatedMinutes: 60, priority: "high" }),
           task({ id: "toobig", estimatedMinutes: 90 }),
@@ -320,12 +328,18 @@ describe("schedule — dependencies", () => {
     expect(tests.startMin).toBeGreaterThanOrEqual(code.endMin);
   });
 
-  it("cascades overflow: dependent of an unschedulable task overflows too", () => {
+  it("cascades overflow: a dependent of a task that fits no gap overflows too", () => {
+    // free: three 60-min gaps = 180 total; taskMinutes 120 <= 180 (not overcommitted).
+    // huge(90) fits no single 60-min gap -> noSlot; child depends on huge -> depUnscheduled.
     const r = schedule(
       baseInput({
-        dayEndMin: 660, // 2h day
+        dayEndMin: 840,
+        blocked: [
+          { startMin: 600, endMin: 660 },
+          { startMin: 720, endMin: 780 },
+        ],
         tasks: [
-          task({ id: "huge", estimatedMinutes: 400 }),
+          task({ id: "huge", estimatedMinutes: 90 }),
           task({ id: "child", estimatedMinutes: 30, dependsOn: ["huge"] }),
         ],
       })
@@ -361,5 +375,90 @@ describe("schedule — dependencies", () => {
     );
     expect(r.planned.map((p) => p.taskId)).toEqual(["solo"]);
     expect(r.overflow).toEqual([]);
+  });
+});
+
+describe("schedule — value-max selection when overcommitted", () => {
+  it("keeps the highest-value tasks and reports the rest as deprioritized", () => {
+    // 9h day = 540 free minutes; 12h of tasks.
+    const r = schedule(
+      baseInput({
+        tasks: [
+          task({ id: "high", priority: "high", estimatedMinutes: 240 }), // value 960
+          task({ id: "med", priority: "med", estimatedMinutes: 240 }),   // value 480
+          task({ id: "low", priority: "low", estimatedMinutes: 240 }),   // value 240
+        ],
+      })
+    );
+    expect(r.planned.map((p) => p.taskId).sort()).toEqual(["high", "med"]);
+    expect(r.overflow).toEqual([
+      { taskId: "low", reason: OVERFLOW_REASONS.deprioritized },
+    ]);
+  });
+
+  it("favors a task due today over an equal task without a deadline", () => {
+    // 4h day (540-780): capacity 240, two 240m low tasks.
+    const r = schedule(
+      baseInput({
+        dayEndMin: 780,
+        tasks: [
+          task({ id: "no-deadline", priority: "low", estimatedMinutes: 240 }),
+          task({ id: "due-today", priority: "low", estimatedMinutes: 240, deadlineOffsetMin: 770 }),
+        ],
+      })
+    );
+    expect(r.planned.map((p) => p.taskId)).toEqual(["due-today"]);
+    expect(r.overflow).toEqual([
+      { taskId: "no-deadline", reason: OVERFLOW_REASONS.deprioritized },
+    ]);
+  });
+
+  it("drops dependents of dropped tasks (closure)", () => {
+    const r = schedule(
+      baseInput({
+        dayEndMin: 780, // capacity 240
+        tasks: [
+          task({ id: "keeper", priority: "high", estimatedMinutes: 240 }),
+          task({ id: "loser", priority: "low", estimatedMinutes: 120 }),
+          task({ id: "loser-child", priority: "high", estimatedMinutes: 30, dependsOn: ["loser"] }),
+        ],
+      })
+    );
+    expect(r.planned.map((p) => p.taskId)).toEqual(["keeper"]);
+    expect(r.overflow).toEqual(
+      expect.arrayContaining([
+        { taskId: "loser", reason: OVERFLOW_REASONS.deprioritized },
+        { taskId: "loser-child", reason: OVERFLOW_REASONS.deprioritized },
+      ])
+    );
+  });
+
+  it("does not run selection when everything fits", () => {
+    const r = schedule(
+      baseInput({
+        tasks: [
+          task({ id: "a", estimatedMinutes: 60 }),
+          task({ id: "b", estimatedMinutes: 60 }),
+        ],
+      })
+    );
+    expect(r.overflow).toEqual([]);
+  });
+});
+
+describe("selectByValue (knapsack DP)", () => {
+  it("finds the optimal subset, not the greedy one", () => {
+    // capacity 300: greedy-by-value takes A(200min,v=800h?) — construct a case
+    // where two smaller tasks beat one big one:
+    const a = task({ id: "a", priority: "high", estimatedMinutes: 300 }); // value 1200
+    const b = task({ id: "b", priority: "high", estimatedMinutes: 150 }); // value 600
+    const c = task({ id: "c", priority: "high", estimatedMinutes: 150 }); // value 600
+    const d = task({ id: "d", priority: "med", estimatedMinutes: 150 });  // value 300
+    // capacity 450: best = a+b (1800) or a+c; NOT b+c+d (1500)
+    const { keep } = selectByValue([a, b, c, d], 450, 1080);
+    const kept = keep.map((t) => t.id);
+    expect(kept).toContain("a");
+    expect(kept.length).toBe(2);
+    expect(kept.filter((id) => ["b", "c"].includes(id)).length).toBe(1);
   });
 });

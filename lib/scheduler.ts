@@ -189,10 +189,37 @@ export function schedule(input: SchedulerInput): SchedulerResult {
   const planned: PlanItem[] = [];
   const overflow: OverflowItem[] = [];
 
-  const { order, cyclic } = topoOrder(input.tasks);
+  // When the day can't hold everything, keep the highest-value subset that
+  // fits (0/1 knapsack over free minutes) and deprioritize the rest — plus
+  // the dependency closure of anything dropped.
+  let candidates = input.tasks;
+  if (taskMinutes > freeMinutes) {
+    const sel = selectByValue(input.tasks, freeMinutes, input.dayEndMin);
+    candidates = sel.keep;
+    const droppedIds = new Set(sel.drop.map((t) => t.id));
+    // closure: dropping a task drops everything that depends on it
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const t of candidates) {
+        if ((t.dependsOn ?? []).some((d) => droppedIds.has(d))) {
+          droppedIds.add(t.id);
+          candidates = candidates.filter((c) => c.id !== t.id);
+          changed = true;
+        }
+      }
+    }
+    for (const t of input.tasks) {
+      if (droppedIds.has(t.id)) {
+        overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.deprioritized });
+      }
+    }
+  }
+
+  const { order, cyclic } = topoOrder(candidates);
   const endOf = new Map<string, number>();      // taskId -> placed end
   const failed = new Set<string>();             // overflowed task ids
-  const inBatch = new Set(input.tasks.map((t) => t.id));
+  const inBatch = new Set(candidates.map((t) => t.id));
   for (const t of cyclic) {
     overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.depCycle });
     failed.add(t.id); // cascade cyclic failure to any dependents
@@ -230,4 +257,59 @@ export function schedule(input: SchedulerInput): SchedulerResult {
   planned.sort((a, b) => a.startMin - b.startMin);
   const plannedMinutes = planned.reduce((s, p) => s + (p.endMin - p.startMin), 0);
   return { planned, overflow, stats: { freeMinutes, plannedMinutes, taskMinutes } };
+}
+
+const PRIORITY_VALUE: Record<Priority, number> = { high: 4, med: 2, low: 1 };
+
+/**
+ * A task's value = priority weight × minutes of important work, doubled when
+ * it is due within the day being planned ("priority-weighted urgent minutes").
+ */
+export function taskValue(t: SchedulerTask, dayEndMin: number): number {
+  const dueToday = t.deadlineOffsetMin !== null && t.deadlineOffsetMin <= dayEndMin ? 2 : 1;
+  return PRIORITY_VALUE[t.priority] * dueToday * t.estimatedMinutes;
+}
+
+/**
+ * 0/1 knapsack over free minutes (exact DP; capacity ≤ 1440 keeps it cheap):
+ * choose the subset of tasks with maximum total value that fits the
+ * available time. Deciding what to KEEP when overcommitted is the honest
+ * core of the product.
+ */
+export function selectByValue(
+  tasks: SchedulerTask[],
+  capacityMin: number,
+  dayEndMin: number
+): { keep: SchedulerTask[]; drop: SchedulerTask[] } {
+  const n = tasks.length;
+  const W = Math.max(0, Math.floor(capacityMin));
+  const dp = new Float64Array(W + 1);
+  const take: Uint8Array[] = [];
+  for (let i = 0; i < n; i++) {
+    const w = tasks[i].estimatedMinutes;
+    const v = taskValue(tasks[i], dayEndMin);
+    const row = new Uint8Array(W + 1);
+    for (let cap = W; cap >= w; cap--) {
+      const cand = dp[cap - w] + v;
+      if (cand > dp[cap]) {
+        dp[cap] = cand;
+        row[cap] = 1;
+      }
+    }
+    take.push(row);
+  }
+  const keep: SchedulerTask[] = [];
+  const drop: SchedulerTask[] = [];
+  let cap = W;
+  for (let i = n - 1; i >= 0; i--) {
+    if (take[i][cap]) {
+      keep.push(tasks[i]);
+      cap -= tasks[i].estimatedMinutes;
+    } else {
+      drop.push(tasks[i]);
+    }
+  }
+  keep.reverse();
+  drop.reverse();
+  return { keep, drop };
 }
