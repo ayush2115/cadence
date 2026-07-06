@@ -250,3 +250,56 @@ describe("schedule — buffers", () => {
     expect(r.overflow).toEqual([]);
   });
 });
+
+describe("schedule — focus windows", () => {
+  const focusDay = (tasks: SchedulerTask[]) =>
+    baseInput({ focus: [{ startMin: 780, endMin: 1020, label: "deep" }], tasks });
+
+  it("pulls a high-priority task into the focus window even when earlier slots exist", () => {
+    const r = schedule(
+      focusDay([
+        task({ id: "deep-work", priority: "high", estimatedMinutes: 120 }),
+        task({ id: "email", priority: "low", estimatedMinutes: 60 }),
+      ])
+    );
+    const deep = r.planned.find((p) => p.taskId === "deep-work")!;
+    const email = r.planned.find((p) => p.taskId === "email")!;
+    expect(deep.startMin).toBe(780);
+    expect(deep.inFocus).toBe(true);
+    expect(email.startMin).toBe(540);
+    expect(email.inFocus).toBe(false);
+  });
+
+  it("pulls a type-matching task into the labelled focus window", () => {
+    const r = schedule(
+      baseInput({
+        focus: [{ startMin: 780, endMin: 900, label: "study" }],
+        tasks: [task({ id: "dsa", type: "study", estimatedMinutes: 60 })],
+      })
+    );
+    expect(r.planned[0]).toEqual({
+      taskId: "dsa", startMin: 780, endMin: 840, inFocus: true,
+    });
+  });
+
+  it("falls back to plain first-fit when the focus window is too small", () => {
+    const r = schedule(
+      baseInput({
+        focus: [{ startMin: 780, endMin: 840, label: "deep" }], // only 60m
+        tasks: [task({ id: "big", priority: "high", estimatedMinutes: 120 })],
+      })
+    );
+    expect(r.planned[0].startMin).toBe(540);
+    expect(r.planned[0].inFocus).toBe(false);
+  });
+
+  it("marks inFocus for any task that happens to land fully inside focus", () => {
+    const r = schedule(
+      baseInput({
+        focus: [{ startMin: 540, endMin: 720, label: "deep" }],
+        tasks: [task({ id: "normal", priority: "med", estimatedMinutes: 60 })],
+      })
+    );
+    expect(r.planned[0].inFocus).toBe(true);
+  });
+});
