@@ -462,6 +462,19 @@ describe("schedule — re-planning with locked items", () => {
     expect(r.stats.freeMinutes).toBe(180); // 240 - 60 locked
   });
 
+  it("excludes locked items from plannedMinutes (they are already placed, not new work)", () => {
+    const r = schedule(
+      baseInput({
+        dayEndMin: 780,
+        locked: [{ taskId: "done-standup", startMin: 600, endMin: 660 }],
+        tasks: [task({ id: "next", estimatedMinutes: 120 })],
+      })
+    );
+    // freeMinutes 180 (240 - 60 locked); plannedMinutes counts only "next" (120), NOT the 60 locked.
+    expect(r.stats.freeMinutes).toBe(180);
+    expect(r.stats.plannedMinutes).toBe(120);
+  });
+
   it("starts a task after the locked prerequisite it depends on", () => {
     const r = schedule(
       baseInput({

@@ -272,7 +272,7 @@ export function schedule(input: SchedulerInput): SchedulerResult {
   }
 
   planned.sort((a, b) => a.startMin - b.startMin);
-  const plannedMinutes = planned.reduce((s, p) => s + (p.endMin - p.startMin), 0);
+  const plannedMinutes = planned.reduce((s, p) => s + (p.locked ? 0 : p.endMin - p.startMin), 0);
   return { planned, overflow, stats: { freeMinutes, plannedMinutes, taskMinutes } };
 }
 
