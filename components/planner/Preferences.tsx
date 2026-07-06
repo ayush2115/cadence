@@ -79,6 +79,12 @@ export function Preferences({
 
       {open && (
         <div className="flex flex-wrap gap-x-6 gap-y-4 border-t border-border px-4 py-4">
+          <p className="w-full text-[12px] leading-relaxed text-muted">
+            Cadence fills your{" "}
+            <span className="font-medium text-accent">focus window</span> with
+            deep-work and high-priority tasks first, then packs everything else
+            around your work hours, blocked times, and buffers.
+          </p>
           <Field label="Work hours">
             <TimeInput label="Work start" value={prefs.workStart} onChange={(v) => onChange({ workStart: v })} />
             <span className="text-subtle">–</span>
