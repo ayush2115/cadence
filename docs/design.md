@@ -140,6 +140,11 @@ Row-Level Security on every table (`user_id = auth.uid()`); access granted expli
   around `schedule()` plus the time↔minutes adapter.
 - `POST /api/sync-gcal` → stretch.
 
+**Parse → schedule contract.** `/api/parse` returns `ParsedTask`
+(`title` / `estimatedMinutes` / `priority` / `deadline` / `type`) with **no `id` and no
+`dependsOn`** — the LLM only extracts. The client assigns a stable `id` (and any
+`dependsOn` edges) to each task before calling `/api/schedule`, which requires them.
+
 ---
 
 ## 5. Scope
