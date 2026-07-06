@@ -217,3 +217,36 @@ describe("schedule — core first-fit", () => {
     });
   });
 });
+
+describe("schedule — buffers", () => {
+  it("leaves bufferMin between consecutive tasks", () => {
+    const r = schedule(
+      baseInput({
+        bufferMin: 10,
+        tasks: [
+          task({ id: "a", estimatedMinutes: 60, deadlineOffsetMin: 700 }),
+          task({ id: "b", estimatedMinutes: 60, deadlineOffsetMin: 900 }),
+        ],
+      })
+    );
+    expect(r.planned).toEqual([
+      { taskId: "a", startMin: 540, endMin: 600, inFocus: false },
+      { taskId: "b", startMin: 610, endMin: 670, inFocus: false },
+    ]);
+  });
+
+  it("does not require a buffer after the last task at the end of a slot", () => {
+    // 60-minute day, 60-minute task, buffer 10: task still fits.
+    const r = schedule(
+      baseInput({
+        dayEndMin: 600,
+        bufferMin: 10,
+        tasks: [task({ id: "a", estimatedMinutes: 60 })],
+      })
+    );
+    expect(r.planned).toEqual([
+      { taskId: "a", startMin: 540, endMin: 600, inFocus: false },
+    ]);
+    expect(r.overflow).toEqual([]);
+  });
+});
