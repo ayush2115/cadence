@@ -48,3 +48,6 @@ next-env.d.ts
 # AI assistant config — local only
 /CLAUDE.md
 /AGENTS.md
+
+# SDD scratch
+/.superpowers/
