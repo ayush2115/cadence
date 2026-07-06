@@ -44,3 +44,7 @@ next-env.d.ts
 /HANDOFF.md
 /DESIGN-GUIDE.md
 /docs/superpowers/
+
+# AI assistant config — local only
+/CLAUDE.md
+/AGENTS.md
