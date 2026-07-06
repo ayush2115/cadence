@@ -12,7 +12,11 @@ import {
 
 /** Mouse-tracked 3D parallax tilt with a moving light glare. Spring-smoothed
  *  motion values (never useState) so it stays 60fps and doesn't re-render.
- *  Collapses to a plain container under reduced motion. */
+ *
+ *  Hydration-safe: the rendered structure/style does NOT depend on
+ *  reduced-motion (only the pointer handlers do, and handlers aren't part of
+ *  SSR HTML), so server and client always render the same tree. Under reduced
+ *  motion the handlers are omitted, so the card just stays still. */
 export function TiltCard({
   children,
   className = "",
@@ -33,24 +37,22 @@ export function TiltCard({
   const glareY = useTransform(py, (v) => `${v * 100}%`);
   const glare = useMotionTemplate`radial-gradient(600px circle at ${glareX} ${glareY}, rgba(255,255,255,0.16), transparent 42%)`;
 
-  if (reduce) return <div className={className}>{children}</div>;
-
-  function onMove(e: React.PointerEvent) {
+  const onMove = (e: React.PointerEvent) => {
     const r = ref.current?.getBoundingClientRect();
     if (!r) return;
     px.set((e.clientX - r.left) / r.width);
     py.set((e.clientY - r.top) / r.height);
-  }
-  function reset() {
+  };
+  const reset = () => {
     px.set(0.5);
     py.set(0.5);
-  }
+  };
 
   return (
     <motion.div
       ref={ref}
-      onPointerMove={onMove}
-      onPointerLeave={reset}
+      onPointerMove={reduce ? undefined : onMove}
+      onPointerLeave={reduce ? undefined : reset}
       style={{
         rotateX,
         rotateY,
