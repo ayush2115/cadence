@@ -65,6 +65,25 @@ export default function LoginPage() {
           </p>
 
           <div className="mt-7 rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-sm)]">
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1">
+              {(["signin", "signup"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => {
+                    setMode(m);
+                    setNote(null);
+                  }}
+                  className={`h-8 rounded-md text-[13px] font-medium transition-colors duration-150 [transition-timing-function:var(--ease-out)] ${
+                    mode === m
+                      ? "bg-surface text-text shadow-[var(--shadow-sm)]"
+                      : "text-muted hover:text-text"
+                  }`}
+                >
+                  {m === "signin" ? "Sign in" : "Create account"}
+                </button>
+              ))}
+            </div>
+
             <Button variant="secondary" className="w-full" type="button">
               <GoogleIcon />
               Continue with Google
@@ -112,21 +131,9 @@ export default function LoginPage() {
             )}
           </div>
 
-          <p className="mt-5 text-center text-[13px] text-muted">
-            {mode === "signin" ? "New to Cadence? " : "Already have an account? "}
-            <button
-              onClick={() => {
-                setMode((m) => (m === "signin" ? "signup" : "signin"));
-                setNote(null);
-              }}
-              className="font-medium text-accent transition-colors hover:text-accent-hover"
-            >
-              {mode === "signin" ? "Create an account" : "Sign in"}
-            </button>
-          </p>
-          <p className="mt-4 text-center text-[13px]">
+          <p className="mt-5 text-center text-[13px]">
             <Link href="/plan" className="text-subtle underline-offset-2 hover:text-text hover:underline">
-              Skip — just try the planner
+              Just try the planner instead
             </Link>
           </p>
         </div>
