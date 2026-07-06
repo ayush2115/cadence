@@ -485,6 +485,23 @@ describe("schedule — re-planning with locked items", () => {
     const f = r.planned.find((p) => p.taskId === "followup")!;
     expect(f.startMin).toBeGreaterThanOrEqual(660);
   });
+
+  it("does not double-place a task id that is also locked", () => {
+    // "dup" is both a locked (already-placed) item and an incoming task.
+    // The locked entry wins; the task must not be scheduled again.
+    const r = schedule(
+      baseInput({
+        dayEndMin: 780,
+        locked: [{ taskId: "dup", startMin: 600, endMin: 660 }],
+        tasks: [task({ id: "dup", estimatedMinutes: 120 })],
+      })
+    );
+    const dupItems = r.planned.filter((p) => p.taskId === "dup");
+    expect(dupItems).toHaveLength(1);
+    expect(dupItems[0].locked).toBe(true);
+    // its 120 minutes must not double-count as new planned work
+    expect(r.stats.plannedMinutes).toBe(0);
+  });
 });
 
 describe("selectByValue (knapsack DP)", () => {

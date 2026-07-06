@@ -62,7 +62,7 @@ export function compareTasks(a: SchedulerTask, b: SchedulerTask): number {
   if (a.estimatedMinutes !== b.estimatedMinutes) {
     return b.estimatedMinutes - a.estimatedMinutes;
   }
-  return a.id.localeCompare(b.id);
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 export function sortTasks(tasks: SchedulerTask[]): SchedulerTask[] {
@@ -182,12 +182,15 @@ function topoOrder(tasks: SchedulerTask[]): { order: SchedulerTask[]; cyclic: Sc
 export function schedule(input: SchedulerInput): SchedulerResult {
   const bufferMin = input.bufferMin ?? 0;
   const lockedItems = input.locked ?? [];
+  // A task id that is also locked is already placed; never schedule it again.
+  const lockedIds = new Set(lockedItems.map((l) => l.taskId));
+  const schedulableTasks = input.tasks.filter((t) => !lockedIds.has(t.id));
   const free = computeFreeIntervals(input.dayStartMin, input.dayEndMin, [
     ...input.blocked,
     ...lockedItems.map((l) => ({ startMin: l.startMin, endMin: l.endMin })),
   ]);
   const freeMinutes = free.reduce((s, i) => s + (i.endMin - i.startMin), 0);
-  const taskMinutes = input.tasks.reduce((s, t) => s + t.estimatedMinutes, 0);
+  const taskMinutes = schedulableTasks.reduce((s, t) => s + t.estimatedMinutes, 0);
 
   const slots: Interval[] = free.map((f) => ({ startMin: f.startMin, endMin: f.endMin }));
   const planned: PlanItem[] = [];
@@ -196,9 +199,9 @@ export function schedule(input: SchedulerInput): SchedulerResult {
   // When the day can't hold everything, keep the highest-value subset that
   // fits (0/1 knapsack over free minutes) and deprioritize the rest — plus
   // the dependency closure of anything dropped.
-  let candidates = input.tasks;
+  let candidates = schedulableTasks;
   if (taskMinutes > freeMinutes) {
-    const sel = selectByValue(input.tasks, freeMinutes, input.dayEndMin);
+    const sel = selectByValue(schedulableTasks, freeMinutes, input.dayEndMin);
     candidates = sel.keep;
     const droppedIds = new Set(sel.drop.map((t) => t.id));
     // closure: dropping a task drops everything that depends on it
@@ -213,7 +216,7 @@ export function schedule(input: SchedulerInput): SchedulerResult {
         }
       }
     }
-    for (const t of input.tasks) {
+    for (const t of schedulableTasks) {
       if (droppedIds.has(t.id)) {
         overflow.push({ taskId: t.id, reason: OVERFLOW_REASONS.deprioritized });
       }
