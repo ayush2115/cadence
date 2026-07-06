@@ -8,7 +8,7 @@ import {
 } from "@/lib/planner";
 import { Dot, priorityColor } from "@/components/ui";
 
-const PX_PER_MIN = 1.15;
+const PX_PER_MIN = 1.5;
 const GUTTER = 52; // px reserved for hour labels
 
 function fmtHour(min: number): string {
