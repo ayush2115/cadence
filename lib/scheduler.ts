@@ -1,4 +1,4 @@
-import type { Interval } from "./types";
+import type { Interval, SchedulerTask, Priority } from "./types";
 
 /**
  * Free time = [dayStart, dayEnd) minus blocked windows.
@@ -36,4 +36,27 @@ export function computeFreeIntervals(
   }
   if (cursor < dayEndMin) free.push({ startMin: cursor, endMin: dayEndMin });
   return free;
+}
+
+const PRIORITY_RANK: Record<Priority, number> = { high: 0, med: 1, low: 2 };
+
+/**
+ * Earliest-Deadline-First: provably optimal for minimizing maximum lateness
+ * on a single machine (one person). Ties: higher priority, then longer
+ * duration ("big rocks first"), then id for determinism.
+ */
+export function compareTasks(a: SchedulerTask, b: SchedulerTask): number {
+  const da = a.deadlineOffsetMin ?? Infinity;
+  const db = b.deadlineOffsetMin ?? Infinity;
+  if (da !== db) return da - db;
+  const pa = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+  if (pa !== 0) return pa;
+  if (a.estimatedMinutes !== b.estimatedMinutes) {
+    return b.estimatedMinutes - a.estimatedMinutes;
+  }
+  return a.id.localeCompare(b.id);
+}
+
+export function sortTasks(tasks: SchedulerTask[]): SchedulerTask[] {
+  return [...tasks].sort(compareTasks);
 }

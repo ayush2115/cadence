@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeFreeIntervals } from "@/lib/scheduler";
+import { computeFreeIntervals, sortTasks } from "@/lib/scheduler";
+import type { SchedulerTask } from "@/lib/types";
 
 describe("computeFreeIntervals", () => {
   it("returns the whole work window when nothing is blocked", () => {
@@ -60,5 +61,54 @@ describe("computeFreeIntervals", () => {
     expect(
       computeFreeIntervals(540, 1080, [{ startMin: 500, endMin: 1100 }])
     ).toEqual([]);
+  });
+});
+
+const task = (over: Partial<SchedulerTask> & { id: string }): SchedulerTask => ({
+  estimatedMinutes: 60,
+  priority: "med",
+  deadlineOffsetMin: null,
+  ...over,
+});
+
+describe("sortTasks (EDF with tie-breaks)", () => {
+  it("orders by earliest deadline first", () => {
+    const out = sortTasks([
+      task({ id: "b", deadlineOffsetMin: 1020 }),
+      task({ id: "a", deadlineOffsetMin: 720 }),
+    ]);
+    expect(out.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("puts tasks with no deadline last", () => {
+    const out = sortTasks([
+      task({ id: "none" }),
+      task({ id: "due", deadlineOffsetMin: 1439 }),
+    ]);
+    expect(out.map((t) => t.id)).toEqual(["due", "none"]);
+  });
+
+  it("breaks deadline ties by priority (high > med > low)", () => {
+    const out = sortTasks([
+      task({ id: "l", priority: "low", deadlineOffsetMin: 720 }),
+      task({ id: "h", priority: "high", deadlineOffsetMin: 720 }),
+      task({ id: "m", priority: "med", deadlineOffsetMin: 720 }),
+    ]);
+    expect(out.map((t) => t.id)).toEqual(["h", "m", "l"]);
+  });
+
+  it("breaks full ties by longer duration first (big rocks)", () => {
+    const out = sortTasks([
+      task({ id: "short", estimatedMinutes: 30 }),
+      task({ id: "long", estimatedMinutes: 120 }),
+    ]);
+    expect(out.map((t) => t.id)).toEqual(["long", "short"]);
+  });
+
+  it("is deterministic on total ties (by id) and does not mutate input", () => {
+    const input = [task({ id: "z" }), task({ id: "a" })];
+    const out = sortTasks(input);
+    expect(out.map((t) => t.id)).toEqual(["a", "z"]);
+    expect(input.map((t) => t.id)).toEqual(["z", "a"]);
   });
 });
