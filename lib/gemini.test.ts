@@ -57,6 +57,7 @@ describe("parseWithGemini", () => {
       .mockResolvedValue(okResponse([{ nonsense: true }]));
     const out = await parseWithGemini("x", "2026-07-06", { apiKey: "k", fetchImpl });
     expect(out).toBeNull();
+    expect(fetchImpl).toHaveBeenCalledTimes(2); // retries once before giving up
   });
 
   it("returns null immediately without an API key", async () => {

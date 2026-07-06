@@ -433,6 +433,30 @@ describe("schedule — value-max selection when overcommitted", () => {
     );
   });
 
+  it("drops a knapsack-surviving child only through the dependency closure", () => {
+    // capacity 120: parent (low, value 120) and child (high, value 480) each
+    // need the full 120m, so only one can be kept. The knapsack keeps the
+    // higher-value CHILD and drops the parent — the child survives the knapsack
+    // on its own value. The closure loop then removes the child because its
+    // parent was dropped, so both end up deprioritized.
+    const r = schedule(
+      baseInput({
+        dayEndMin: 660, // free = 120
+        tasks: [
+          task({ id: "parent", priority: "low", estimatedMinutes: 120 }),
+          task({ id: "child", priority: "high", estimatedMinutes: 120, dependsOn: ["parent"] }),
+        ],
+      })
+    );
+    expect(r.planned).toEqual([]);
+    expect(r.overflow).toEqual(
+      expect.arrayContaining([
+        { taskId: "parent", reason: OVERFLOW_REASONS.deprioritized },
+        { taskId: "child", reason: OVERFLOW_REASONS.deprioritized },
+      ])
+    );
+  });
+
   it("does not run selection when everything fits", () => {
     const r = schedule(
       baseInput({
@@ -518,5 +542,20 @@ describe("selectByValue (knapsack DP)", () => {
     expect(kept).toContain("a");
     expect(kept.length).toBe(2);
     expect(kept.filter((id) => ["b", "c"].includes(id)).length).toBe(1);
+  });
+
+  it("beats a value-DENSITY greedy, not just a weight-ascending one", () => {
+    // density = value/weight = PRIORITY_VALUE * dueMultiplier (minutes cancel).
+    //   A: high, no deadline -> density 4;  B,C: med, no deadline -> density 2.
+    // Values (taskValue = PRIORITY_VALUE * due * minutes, weight = minutes):
+    //   A: 4*1*30 = 120 (w30)   B: 2*1*90 = 180 (w90)   C: 180 (w90)
+    // Capacity 180. Density-greedy takes A (highest density) then B, leaving 60
+    // -> can't fit C -> {A,B}=300. The exact DP takes {B,C}=360.
+    const a = task({ id: "a", priority: "high", estimatedMinutes: 30 });
+    const b = task({ id: "b", priority: "med", estimatedMinutes: 90 });
+    const c = task({ id: "c", priority: "med", estimatedMinutes: 90 });
+    const { keep, drop } = selectByValue([a, b, c], 180, 1080);
+    expect(keep.map((t) => t.id).sort()).toEqual(["b", "c"]);
+    expect(drop.map((t) => t.id)).toEqual(["a"]);
   });
 });
