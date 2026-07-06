@@ -1,90 +1,154 @@
 import Link from "next/link";
+import { NotePencil, CalendarDots, Scales } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
-import { Button, Dot, priorityColor } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { SmoothScroll } from "@/components/landing/SmoothScroll";
+import { Reveal } from "@/components/landing/Reveal";
+import { HeroPreview } from "@/components/landing/HeroPreview";
+
+const STEPS = [
+  {
+    Icon: NotePencil,
+    title: "Brain-dump",
+    body: "Type everything in plain English. An LLM turns durations, deadlines, and priorities into structured tasks you can edit.",
+  },
+  {
+    Icon: CalendarDots,
+    title: "Auto-schedule",
+    body: "A real constraint solver packs your day around fixed blocks and focus windows: earliest-deadline-first, with a knapsack for overcommitted days.",
+  },
+  {
+    Icon: Scales,
+    title: "Honest overflow",
+    body: "It does the time math you avoid, and tells you exactly what won't fit today so the important work doesn't quietly slip.",
+  },
+];
+
+const TECH = ["Earliest-deadline-first", "Weighted-interval DP", "Topological sort", "0/1 knapsack", "69 passing tests"];
 
 export default function Landing() {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-5">
-        <Logo />
-        <nav className="flex items-center gap-1.5">
-          <Link
-            href="/login"
-            className="rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors duration-150 hover:text-text"
-          >
-            Sign in
-          </Link>
-          <Link href="/plan">
-            <Button size="sm">Plan your day</Button>
-          </Link>
-        </nav>
+      <SmoothScroll />
+
+      <header className="sticky top-0 z-30 border-b border-transparent bg-bg/70 backdrop-blur-md">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 lg:px-8">
+          <Logo />
+          <nav className="flex items-center gap-1.5">
+            <Link
+              href="/login"
+              className="rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors duration-150 hover:text-text"
+            >
+              Sign in
+            </Link>
+            <Link href="/plan">
+              <Button size="sm">Plan your day</Button>
+            </Link>
+          </nav>
+        </div>
       </header>
 
       <main className="flex-1">
-        {/* hero */}
-        <section className="mx-auto grid w-full max-w-5xl items-center gap-12 px-5 pb-16 pt-10 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
+        {/* hero — asymmetric split */}
+        <section className="mx-auto grid w-full max-w-6xl items-center gap-14 px-5 pb-20 pt-12 lg:grid-cols-[1fr_1.05fr] lg:px-8 lg:pt-20">
           <div>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-accent">
-              AI day planner
-            </span>
-            <h1 className="mt-4 text-4xl font-semibold leading-[1.08] tracking-tight text-text sm:text-5xl">
-              Dump your tasks.
-              <br />
-              Get a real plan.
-            </h1>
-            <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted">
-              Cadence turns a plain-English brain-dump into a realistic, timeboxed
-              day — auto-scheduled by priority, deadline, and your focus windows. And
-              it&apos;s honest about what won&apos;t fit.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/plan">
-                <Button>Plan your day →</Button>
-              </Link>
-              <Link href="#how">
-                <Button variant="secondary">See how it works</Button>
-              </Link>
-            </div>
-            <p className="mt-4 text-[13px] text-subtle">
-              Free · no signup needed to try.
-            </p>
+            <Reveal>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-accent">
+                AI day planner
+              </span>
+            </Reveal>
+            <Reveal delay={0.06}>
+              <h1 className="mt-4 text-balance text-[2.6rem] font-semibold leading-[1.06] tracking-tight text-text sm:text-6xl">
+                Dump your tasks.
+                <br />
+                Get a real plan.
+              </h1>
+            </Reveal>
+            <Reveal delay={0.12}>
+              <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted">
+                Turn a plain-English brain dump into a realistic, timeboxed day.
+                Scheduled by priority and deadline, honest about what won&apos;t fit.
+              </p>
+            </Reveal>
+            <Reveal delay={0.18}>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link href="/plan">
+                  <Button>Plan your day</Button>
+                </Link>
+                <Link href="#how">
+                  <Button variant="secondary">See how it works</Button>
+                </Link>
+              </div>
+            </Reveal>
           </div>
 
-          <HeroPreview />
+          <Reveal delay={0.1} className="[perspective:1200px]">
+            <HeroPreview />
+          </Reveal>
         </section>
 
-        {/* how it works */}
-        <section
-          id="how"
-          className="border-t border-border bg-surface/40 py-16 sm:py-20"
-        >
-          <div className="mx-auto w-full max-w-5xl px-5">
-            <h2 className="text-2xl font-semibold tracking-tight text-text">
-              How it works
-            </h2>
-            <div className="mt-8 grid gap-6 sm:grid-cols-3">
-              <Step
-                n="1"
-                title="Brain-dump"
-                body="Type everything in plain English — durations, deadlines, priorities. An LLM turns the mess into structured tasks."
-              />
-              <Step
-                n="2"
-                title="Auto-schedule"
-                body="A real constraint solver — earliest-deadline-first, focus windows, a knapsack for overcommitted days — packs your day around fixed blocks."
-              />
-              <Step
-                n="3"
-                title="Honest overflow"
-                body="It does the time math you avoid: 5.5h free vs 7h of tasks, and tells you exactly what moves to tomorrow."
-              />
+        {/* how it works — 3-step sequence */}
+        <section id="how" className="scroll-mt-20 border-t border-border py-20 sm:py-28">
+          <div className="mx-auto w-full max-w-6xl px-5 lg:px-8">
+            <Reveal>
+              <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-tight text-text">
+                Three steps from a messy list to a doable day.
+              </h2>
+            </Reveal>
+            <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-3">
+              {STEPS.map((s, i) => (
+                <Reveal key={s.title} delay={i * 0.08}>
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent-subtle text-accent">
+                    <s.Icon size={20} weight="duotone" />
+                  </div>
+                  <h3 className="mt-4 text-[15px] font-semibold text-text">{s.title}</h3>
+                  <p className="mt-2 text-[14px] leading-relaxed text-muted">{s.body}</p>
+                </Reveal>
+              ))}
             </div>
+          </div>
+        </section>
+
+        {/* under the hood — the differentiator */}
+        <section className="border-t border-border bg-surface/40 py-20 sm:py-28">
+          <div className="mx-auto w-full max-w-3xl px-5 text-center lg:px-8">
+            <Reveal>
+              <h2 className="text-balance text-3xl font-semibold tracking-tight text-text">
+                The engine is the point, not the prompt.
+              </h2>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-muted">
+                The LLM only reads your text. A tested constraint solver builds the
+                plan: earliest-deadline-first placement, a knapsack for overcommitted
+                days, topological sort for dependencies.
+              </p>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <ul className="mt-7 flex flex-wrap justify-center gap-2">
+                {TECH.map((t) => (
+                  <li
+                    key={t}
+                    className="rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-[12px] text-muted"
+                  >
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={0.2}>
+              <div className="mt-9">
+                <Link href="/plan">
+                  <Button>Plan your day</Button>
+                </Link>
+              </div>
+            </Reveal>
           </div>
         </section>
       </main>
 
-      <footer className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-[13px] text-subtle">
-        <span>Cadence — an AI day planner.</span>
+      <footer className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-[13px] text-subtle lg:px-8">
+        <span>Cadence, an AI day planner.</span>
         <a
           href="https://github.com/ayush2115/cadence"
           className="transition-colors duration-150 hover:text-text"
@@ -94,62 +158,6 @@ export default function Landing() {
           Source on GitHub
         </a>
       </footer>
-    </div>
-  );
-}
-
-function Step({ n, title, body }: { n: string; title: string; body: string }) {
-  return (
-    <div>
-      <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent-subtle font-mono text-[13px] font-semibold text-accent">
-        {n}
-      </div>
-      <h3 className="mt-3.5 text-[15px] font-semibold text-text">{title}</h3>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{body}</p>
-    </div>
-  );
-}
-
-/** A static, self-contained preview of a planned day (mirrors the real timeline). */
-function HeroPreview() {
-  const items = [
-    { title: "Review PR", time: "9:00–9:30", prio: "high" as const, focus: true },
-    { title: "DSA graph sheet", time: "9:35–12:35", prio: "med" as const, focus: false },
-    { title: "Gym", time: "2:00–3:00", prio: "med" as const, focus: false },
-  ];
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-[var(--shadow-md)]">
-      <div className="mb-3 flex items-baseline justify-between">
-        <span className="text-[13px] font-semibold text-text">Your day</span>
-        <span className="font-mono text-[11px] text-subtle">Mon, Jul 7</span>
-      </div>
-      <div className="rounded-lg bg-surface-2 px-3 py-2 text-[12px]">
-        <span className="font-semibold text-accent">5.5h free</span>
-        <span className="text-muted"> vs 6.25h of tasks — 1 won&apos;t fit today.</span>
-      </div>
-      <div className="mt-3 flex flex-col gap-2">
-        {items.map((it) => (
-          <div
-            key={it.title}
-            className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
-            style={{
-              background: it.focus
-                ? "color-mix(in oklab, var(--accent) 8%, var(--surface))"
-                : "var(--surface)",
-            }}
-          >
-            <span className="flex items-center gap-2 text-[13px] font-medium text-text">
-              <Dot color={priorityColor[it.prio]} />
-              {it.title}
-            </span>
-            <span className="font-mono text-[11px] text-subtle">{it.time}</span>
-          </div>
-        ))}
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-[12px] text-subtle">
-          <span style={{ color: "var(--overflow)" }}>Didn&apos;t fit:</span>
-          read system design · 45m
-        </div>
-      </div>
     </div>
   );
 }

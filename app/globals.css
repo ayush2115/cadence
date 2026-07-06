@@ -151,8 +151,24 @@ body {
   animation: rise 360ms var(--ease-out) both;
 }
 
+/* landing load-reveal: always runs on mount, so content never ships blank */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-reveal {
+  animation: reveal 600ms var(--ease-out) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise {
+  .animate-rise,
+  .animate-reveal {
     animation: none;
   }
   * {
