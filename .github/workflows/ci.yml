@@ -1,4 +1,4 @@
-name: CI
+name: Verify (types · lint · tests · build)
 
 # Verifies every push and PR to main is clean: types, lint, the full test
 # suite, and a production build must all pass. Red check = don't merge/ship.
