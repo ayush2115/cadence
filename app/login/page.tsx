@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 
 function GoogleIcon() {
   return (
@@ -42,10 +43,46 @@ export default function LoginPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Auth is wired to Supabase in Milestone 4. Kept inert (no dead network call).
+    if (!supabaseConfigured) {
+      setNote("Auth isn't configured in this build. You can still try the planner.");
+      return;
+    }
     setPending(true);
-    setNote("Auth isn't connected in this build yet — you can still try the planner.");
+    setNote(null);
+    const supabase = createClient();
+
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setPending(false);
+      if (error) return setNote(error.message);
+      window.location.href = "/plan";
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+    });
     setPending(false);
+    if (error) return setNote(error.message);
+    if (data.session) {
+      window.location.href = "/plan";
+      return;
+    }
+    setNote("Check your email to confirm your account, then sign in.");
+  }
+
+  async function signInWithGoogle() {
+    if (!supabaseConfigured) {
+      setNote("Google sign-in isn't configured in this build.");
+      return;
+    }
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${location.origin}/auth/callback` },
+    });
   }
 
   return (
@@ -86,7 +123,12 @@ export default function LoginPage() {
               ))}
             </div>
 
-            <Button variant="secondary" className="w-full" type="button">
+            <Button
+              variant="secondary"
+              className="w-full"
+              type="button"
+              onClick={signInWithGoogle}
+            >
               <GoogleIcon />
               Continue with Google
             </Button>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   type ClientTask,
   type PlannerPreferences,
@@ -15,6 +16,8 @@ import {
   todayISO,
 } from "@/lib/planner";
 import { Button, Dot, priorityColor } from "@/components/ui";
+import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { loadPlannerData, saveTasks, savePreferences } from "@/lib/supabase/db";
 import { TaskCard } from "./TaskCard";
 import { Preferences } from "./Preferences";
 import { Timeline } from "./Timeline";
@@ -28,6 +31,10 @@ export function PlannerApp() {
   const [source, setSource] = useState<"gemini" | "fallback" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const day = todayISO();
+
+  const supabase = useMemo(() => (supabaseConfigured ? createClient() : null), []);
+  const [userId, setUserId] = useState<string | null>(null);
+  const hydrating = useRef(false);
 
   const runSchedule = useCallback(
     async (nextTasks: ClientTask[], nextPrefs: PlannerPreferences) => {
@@ -79,6 +86,40 @@ export function PlannerApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planKey]);
 
+  // Load the signed-in user's saved tasks + preferences on mount.
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    supabase.auth.getUser().then(async ({ data }) => {
+      const user = data.user;
+      if (!user || cancelled) return;
+      hydrating.current = true;
+      setUserId(user.id);
+      const loaded = await loadPlannerData(supabase, user.id);
+      if (cancelled) return;
+      setPrefs(loaded.preferences);
+      if (loaded.tasks.length > 0) {
+        setTasks(loaded.tasks);
+        await runSchedule(loaded.tasks, loaded.preferences);
+      }
+      hydrating.current = false;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, runSchedule]);
+
+  // Persist tasks + preferences (debounced) whenever they change while signed in.
+  useEffect(() => {
+    if (!supabase || !userId || hydrating.current) return;
+    const id = setTimeout(() => {
+      saveTasks(supabase, userId, tasks);
+      savePreferences(supabase, userId, prefs);
+    }, 800);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planKey, supabase, userId]);
+
   const patchTask = (id: string, patch: Partial<ClientTask>) =>
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   const removeTask = (id: string) => setTasks((ts) => ts.filter((t) => t.id !== id));
@@ -124,10 +165,25 @@ export function PlannerApp() {
           {source && (
             <p className="mt-2 text-[11px] text-subtle">
               {source === "gemini"
-                ? "Parsed by Gemini — edit anything below."
-                : "Parsed offline — edit anything below."}
+                ? "Parsed by Gemini. Edit anything below."
+                : "Parsed offline. Edit anything below."}
             </p>
           )}
+          {userId ? (
+            <p className="mt-2 text-[11px] text-subtle">
+              Signed in. Your tasks and plan are saved automatically.
+            </p>
+          ) : supabaseConfigured ? (
+            <p className="mt-2 text-[11px] text-subtle">
+              <Link
+                href="/login"
+                className="text-accent underline-offset-2 hover:underline"
+              >
+                Sign in
+              </Link>{" "}
+              to save your plans across devices.
+            </p>
+          ) : null}
         </div>
 
         {error && (

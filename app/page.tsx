@@ -3,6 +3,7 @@ import { NotePencil, CalendarDots, Scales, GithubLogo } from "@phosphor-icons/re
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 import { SmoothScroll } from "@/components/landing/SmoothScroll";
 import { Reveal } from "@/components/landing/Reveal";
 import { HeroPreview } from "@/components/landing/HeroPreview";
@@ -44,12 +45,7 @@ export default function Landing() {
               <GithubLogo size={16} weight="fill" />
               GitHub
             </a>
-            <Link
-              href="/login"
-              className="rounded-lg px-3 py-2 text-[13px] font-medium text-muted transition-colors duration-150 hover:text-text"
-            >
-              Sign in
-            </Link>
+            <UserMenu />
             <Link href="/plan">
               <Button size="sm">Plan your day</Button>
             </Link>

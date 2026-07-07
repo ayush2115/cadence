@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 import { PlannerApp } from "@/components/planner/PlannerApp";
 
 export default function PlanPage() {
@@ -11,12 +11,7 @@ export default function PlanPage() {
           <Logo />
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Link
-              href="/login"
-              className="rounded-lg px-2.5 py-2 text-[13px] font-medium text-muted transition-colors duration-150 hover:text-text"
-            >
-              Sign in
-            </Link>
+            <UserMenu />
           </div>
         </div>
       </header>
