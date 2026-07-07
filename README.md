@@ -2,7 +2,9 @@
 
 > An AI day planner that auto-schedules your tasks by priority, deadline, and focus windows.
 
-**[Live demo →](https://cadence.vercel.app)**  ·  Next.js · TypeScript · Supabase · Gemini
+**[Live demo → cadenceday.vercel.app](https://cadenceday.vercel.app)**  ·  Next.js · TypeScript · Supabase · Gemini
+
+![Cadence — the planner turning a brain-dump into a timeboxed day](docs/screenshot.png)
 
 Cadence turns a plain-English brain-dump into a realistic, timeboxed day. An LLM
 extracts structured tasks from your text; a **constraint-based scheduling engine —
@@ -10,7 +12,6 @@ the core of the project — packs them into your real available time and honestl
 tells you what won't fit.** The LLM only reads text; all scheduling is done by a
 tested algorithm.
 
-<!-- Add a screenshot here after deploy: ![Cadence planner](docs/screenshot.png) -->
 
 ## What it does
 
