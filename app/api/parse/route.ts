@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseWithGemini } from "@/lib/gemini";
 import { parseFallback } from "@/lib/parse-fallback";
+import { getSignedInUserId } from "@/lib/supabase/server";
 
 const BodySchema = z.object({
   text: z.string().min(1).max(4000),
@@ -22,7 +23,10 @@ export async function POST(req: Request) {
   const { text } = parsed.data;
   const today = parsed.data.today ?? new Date().toISOString().slice(0, 10);
 
-  const fromGemini = await parseWithGemini(text, today);
+  // Gemini is billed to our key, so only signed-in users may reach it. Guests
+  // (and demo mode) still get a working planner via the offline parser.
+  const userId = await getSignedInUserId();
+  const fromGemini = userId ? await parseWithGemini(text, today) : null;
   const tasks = fromGemini ?? parseFallback(text, today);
   return Response.json({ tasks, source: fromGemini ? "gemini" : "fallback" });
 }

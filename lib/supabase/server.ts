@@ -27,3 +27,21 @@ export async function createClient() {
     }
   );
 }
+
+/** The signed-in user's id, or null for guests. Fails closed: returns null when
+ *  Supabase isn't configured (demo mode) or the session can't be verified, so
+ *  callers gating paid APIs never open up because of missing config. Uses
+ *  getUser() (verified against Supabase Auth), not getSession() (cookie only). */
+export async function getSignedInUserId(): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || url.includes("placeholder")) return null;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error) return null;
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
